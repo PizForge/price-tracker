@@ -7,7 +7,7 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "price_tracker.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "price_tracker.db"
 
 
 def _remove_tracking_parameters(url: str) -> str:
@@ -29,7 +29,9 @@ def _remove_tracking_parameters(url: str) -> str:
 
 
 def _connect(db_path: str | Path) -> sqlite3.Connection:
-    connection = sqlite3.connect(db_path)
+    database_path = Path(db_path)
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(database_path)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     connection.executescript(

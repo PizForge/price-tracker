@@ -7,5 +7,4 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
-price_tracker.db
 .env

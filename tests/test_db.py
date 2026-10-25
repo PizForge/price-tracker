@@ -3,12 +3,26 @@ from decimal import Decimal
 import pytest
 
 from pricetracker.db import (
+    DEFAULT_DB_PATH,
     add_product,
     get_history,
     list_products,
     record_price,
     remove_product,
 )
+
+
+def test_default_database_is_in_data_directory():
+    assert DEFAULT_DB_PATH.name == "price_tracker.db"
+    assert DEFAULT_DB_PATH.parent.name == "data"
+
+
+def test_add_product_creates_database_parent_directory(tmp_path):
+    db_path = tmp_path / "nested" / "price_tracker.db"
+
+    add_product("Kasut hiking", "https://example.com/shoe", db_path=db_path)
+
+    assert db_path.is_file()
 
 
 def test_add_and_list_products_with_currency(tmp_path):

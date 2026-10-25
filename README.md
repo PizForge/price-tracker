@@ -12,6 +12,8 @@ Price-Tracker/
 │   ├── cli.py
 │   ├── db.py
 │   └── prices.py
+├── data/
+│   └── price_tracker.db
 ├── tests/
 │   ├── __init__.py
 │   ├── test_cli.py
@@ -57,6 +59,11 @@ The optional global `--db-path` argument selects a SQLite database file.
 `check` stores each successful fetch and reports price drops or prices at or
 below the configured target. Adding a product stores its first observed price
 as the starting point for later comparisons.
+
+By default, the SQLite database is stored at `data/price_tracker.db`. The
+GitHub Actions workflow runs price checks every six hours or manually, then
+commits the database when it changes. Its workflow token needs permission to
+write repository contents.
 
 Install test dependencies and run the pytest suite with:
 
