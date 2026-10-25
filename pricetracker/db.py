@@ -4,9 +4,28 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "price_tracker.db"
+
+
+def _remove_tracking_parameters(url: str) -> str:
+    parts = urlsplit(url)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    clean_query = [
+        (key, value)
+        for key, value in query
+        if not (
+            key.lower().startswith(("utm_", "gad_"))
+            or key.lower() in {"gclid", "fbclid"}
+        )
+    ]
+    if len(clean_query) == len(query):
+        return url
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(clean_query), parts.fragment)
+    )
 
 
 def _connect(db_path: str | Path) -> sqlite3.Connection:
@@ -57,11 +76,12 @@ def add_product(
     if target is not None and (not target.is_finite() or target < 0):
         raise ValueError("Harga sasaran mesti nombor sah dan tidak negatif.")
     target_value = str(target) if target is not None else None
+    clean_url = _remove_tracking_parameters(url)
     with closing(_connect(db_path)) as connection, connection:
         cursor = connection.execute(
             "INSERT INTO products (name, url, currency, target_price) "
             "VALUES (?, ?, ?, ?)",
-            (name, url, currency.upper() if currency else None, target_value),
+            (name, clean_url, currency.upper() if currency else None, target_value),
         )
         return int(cursor.lastrowid)
 

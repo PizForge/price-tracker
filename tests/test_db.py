@@ -29,6 +29,20 @@ def test_add_and_list_products_with_currency(tmp_path):
     ]
 
 
+def test_add_product_removes_tracking_query_parameters(tmp_path):
+    db_path = tmp_path / "clean-url.db"
+    tracked_url = (
+        "https://example.com/shoe?color=blue&utm_source=mail"
+        "&gclid=click-id&gad_campaignid=campaign&fbclid=social-id&page=2"
+    )
+
+    add_product("Kasut hiking", tracked_url, db_path=db_path)
+
+    assert list_products(db_path)[0]["url"] == (
+        "https://example.com/shoe?color=blue&page=2"
+    )
+
+
 def test_record_price_and_get_history_in_order(tmp_path):
     db_path = tmp_path / "history.db"
     product_id = add_product("Kasut hiking", "https://example.com/shoe", db_path=db_path)

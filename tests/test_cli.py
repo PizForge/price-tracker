@@ -7,6 +7,7 @@ from pricetracker.prices import ProductInfo
 
 def test_add_fetches_product_and_records_initial_price(tmp_path, monkeypatch, capsys):
     db_path = tmp_path / "cli.db"
+    tracked_url = "https://example.com/shoe?utm_source=mail&color=blue&fbclid=social-id"
     monkeypatch.setattr(
         cli,
         "fetch_product",
@@ -14,12 +15,13 @@ def test_add_fetches_product_and_records_initial_price(tmp_path, monkeypatch, ca
     )
 
     result = cli.main(
-        ["--db-path", str(db_path), "add", "https://example.com/shoe", "--target", "250"]
+        ["--db-path", str(db_path), "add", tracked_url, "--target", "250"]
     )
 
     assert result == 0
     assert "[1] Kasut hiking" in capsys.readouterr().out
     product = list_products(db_path)[0]
+    assert product["url"] == "https://example.com/shoe?color=blue"
     assert product["target_price"] == "250"
     assert product["currency"] == "MYR"
     assert get_history(product["id"], db_path)[0]["price"] == "258.99"
