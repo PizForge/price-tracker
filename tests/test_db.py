@@ -24,6 +24,7 @@ def test_add_and_list_products_with_currency(tmp_path):
             "name": "Kasut hiking",
             "url": "https://example.com/shoe",
             "currency": "MYR",
+            "target_price": None,
         }
     ]
 

@@ -8,10 +8,13 @@ Python project for retrieving product names and prices from product pages.
 Price-Tracker/
 ├── pricetracker/
 │   ├── __init__.py
+│   ├── __main__.py
+│   ├── cli.py
 │   ├── db.py
 │   └── prices.py
 ├── tests/
 │   ├── __init__.py
+│   ├── test_cli.py
 │   ├── test_db.py
 │   └── test_prices.py
 ├── .gitignore
@@ -39,6 +42,21 @@ return only the `Decimal` price. Missing product data raises
 `record_price`, and `get_history` backed by SQLite. Database functions accept
 an optional `db_path`; product currency is taken from JSON-LD `priceCurrency`
 when available and stored alongside product and price history records.
+
+Use the command-line interface with `python -m pricetracker`:
+
+```powershell
+python -m pricetracker add "https://example.com/product" --target 250.00
+python -m pricetracker list
+python -m pricetracker check
+python -m pricetracker history 1
+python -m pricetracker remove 1
+```
+
+The optional global `--db-path` argument selects a SQLite database file.
+`check` stores each successful fetch and reports price drops or prices at or
+below the configured target. Adding a product stores its first observed price
+as the starting point for later comparisons.
 
 Install test dependencies and run the pytest suite with:
 

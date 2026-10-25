@@ -19,7 +19,8 @@ def _connect(db_path: str | Path) -> sqlite3.Connection:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             url TEXT NOT NULL UNIQUE,
-            currency TEXT
+            currency TEXT,
+            target_price TEXT
         );
         CREATE TABLE IF NOT EXISTS price_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,6 +33,11 @@ def _connect(db_path: str | Path) -> sqlite3.Connection:
             ON price_history(product_id, recorded_at);
         """
     )
+    product_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(products)")
+    }
+    if "target_price" not in product_columns:
+        connection.execute("ALTER TABLE products ADD COLUMN target_price TEXT")
     return connection
 
 
@@ -44,12 +50,18 @@ def add_product(
     url: str,
     currency: str | None = None,
     db_path: str | Path = DEFAULT_DB_PATH,
+    target_price: Decimal | int | float | str | None = None,
 ) -> int:
     """Add a product and return its database ID."""
+    target = Decimal(str(target_price)) if target_price is not None else None
+    if target is not None and (not target.is_finite() or target < 0):
+        raise ValueError("Harga sasaran mesti nombor sah dan tidak negatif.")
+    target_value = str(target) if target is not None else None
     with closing(_connect(db_path)) as connection, connection:
         cursor = connection.execute(
-            "INSERT INTO products (name, url, currency) VALUES (?, ?, ?)",
-            (name, url, currency.upper() if currency else None),
+            "INSERT INTO products (name, url, currency, target_price) "
+            "VALUES (?, ?, ?, ?)",
+            (name, url, currency.upper() if currency else None, target_value),
         )
         return int(cursor.lastrowid)
 
@@ -60,7 +72,7 @@ def list_products(
     """Return all tracked products ordered by database ID."""
     with closing(_connect(db_path)) as connection, connection:
         rows = connection.execute(
-            "SELECT id, name, url, currency FROM products ORDER BY id"
+            "SELECT id, name, url, currency, target_price FROM products ORDER BY id"
         ).fetchall()
         return [_as_dict(row) for row in rows]
 
