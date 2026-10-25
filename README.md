@@ -1,32 +1,24 @@
 # Price Tracker
 
-Python project for retrieving product names and prices from product pages.
+Price Tracker ialah projek Python untuk menjejak harga produk daripada URL
+halaman produk. Ia membaca nama, harga dan mata wang daripada data berstruktur
+JSON-LD, kemudian menggunakan meta tag sebagai pilihan sandaran. Harga semasa
+dan sejarah perubahan disimpan dalam pangkalan data SQLite.
 
-## Project structure
+## Ciri-ciri
 
-```text
-Price-Tracker/
-├── pricetracker/
-│   ├── __init__.py
-│   ├── __main__.py
-│   ├── cli.py
-│   ├── db.py
-│   └── prices.py
-├── data/
-│   └── price_tracker.db
-├── tests/
-│   ├── __init__.py
-│   ├── test_cli.py
-│   ├── test_db.py
-│   └── test_prices.py
-├── .gitignore
-├── pyproject.toml
-└── requirements.txt
-```
+- Tambah produk dengan harga sasaran pilihan.
+- Senaraikan produk yang sedang dijejak dan lihat sejarah harga.
+- Semak harga terkini, simpan setiap semakan, dan maklumkan jika harga turun
+  atau mencapai harga sasaran.
+- Simpan nama, URL produk yang dibersihkan daripada parameter tracking, mata
+  wang dan sejarah harga dalam SQLite.
+- Jalankan semakan berkala melalui GitHub Actions atau mulakan semakan secara
+  manual.
 
-## Getting started
+## Pemasangan
 
-Create and activate a virtual environment, then install the project:
+Perlukan Python 3.10 atau lebih baharu. Dari direktori projek:
 
 ```powershell
 python -m venv .venv
@@ -34,40 +26,77 @@ python -m venv .venv
 python -m pip install -e .
 ```
 
-`pricetracker.prices.fetch_product(url)` fetches an HTTP(S) product page and
-returns `ProductInfo` with the product name and price. It checks JSON-LD first,
-then falls back to product meta tags. `fetch_price(url)` remains available to
-return only the `Decimal` price. Missing product data raises
-`PriceNotFoundError`.
+Pangkalan data SQLite dicipta secara automatik di
+`data/price_tracker.db`. Untuk memilih lokasi lain, gunakan pilihan `--db-path`.
 
-`pricetracker.db` provides `add_product`, `list_products`, `remove_product`,
-`record_price`, and `get_history` backed by SQLite. Database functions accept
-an optional `db_path`; product currency is taken from JSON-LD `priceCurrency`
-when available and stored alongside product and price history records.
+## Penggunaan CLI
 
-Use the command-line interface with `python -m pricetracker`:
+Semua arahan dijalankan menggunakan `python -m pricetracker`.
+
+Tambah produk dan harga sasaran pilihan:
 
 ```powershell
 python -m pricetracker add "https://example.com/product" --target 250.00
+```
+
+Senaraikan produk:
+
+```powershell
 python -m pricetracker list
+```
+
+Semak dan simpan harga terkini untuk semua produk:
+
+```powershell
 python -m pricetracker check
+```
+
+Lihat sejarah harga menggunakan ID yang dipaparkan oleh arahan `list`:
+
+```powershell
 python -m pricetracker history 1
+```
+
+Buang produk dan sejarah harganya:
+
+```powershell
 python -m pricetracker remove 1
 ```
 
-The optional global `--db-path` argument selects a SQLite database file.
-`check` stores each successful fetch and reports price drops or prices at or
-below the configured target. Adding a product stores its first observed price
-as the starting point for later comparisons.
+Contoh menggunakan pangkalan data alternatif:
 
-By default, the SQLite database is stored at `data/price_tracker.db`. The
-GitHub Actions workflow runs price checks every six hours or manually, then
-commits the database when it changes. Its workflow token needs permission to
-write repository contents.
+```powershell
+python -m pricetracker --db-path data/test.db list
+```
 
-Install test dependencies and run the pytest suite with:
+## GitHub Actions
+
+Workflow dalam `.github/workflows/check.yml` menjalankan `python -m
+pricetracker check` setiap enam jam (`0 */6 * * *`) dan juga menyokong
+`workflow_dispatch` untuk dijalankan secara manual dari tab **Actions** di
+GitHub. Selepas semakan, workflow menambah `data/price_tracker.db` ke Git dan
+commit serta push hanya jika fail itu berubah. Ia menggunakan
+`permissions: contents: write`; pastikan tetapan Actions repository
+membenarkan workflow token menulis kandungan.
+
+## Had yang diketahui
+
+- Sesetengah laman menyekat permintaan automatik atau memerlukan kuki,
+  pengesahan, atau sesi pengguna. Dalam keadaan ini, semakan boleh gagal.
+- Parser membaca HTML yang diterima daripada pelayan. Laman yang hanya
+  memaparkan harga selepas JavaScript dijalankan mungkin tidak mendedahkan
+  harga yang boleh dibaca oleh tracker.
+- Harga hanya dapat dikenal pasti apabila laman menyediakan format JSON-LD
+  atau meta tag produk yang disokong. Struktur laman yang berbeza mungkin
+  memerlukan sokongan khusus.
+
+## Ujian
+
+Pasang kebergantungan ujian dan jalankan pytest:
 
 ```powershell
 python -m pip install -e ".[test]"
 python -m pytest
 ```
+
+Dibina dengan bantuan AI
