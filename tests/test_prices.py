@@ -69,7 +69,8 @@ def test_fetch_product_prefers_json_ld_over_meta(monkeypatch):
             '<meta property="product:price:amount" content="RM99.00">'
             '<script type="application/ld+json">'
             '{"@type":"Product","name":"JSON-LD Product",'
-            '"offers":{"@type":"Offer","price":"RM1, 399.00"}}'
+            '"offers":{"@type":"Offer","price":"RM1, 399.00",'
+            '"priceCurrency":"MYR"}}'
             "</script>"
         )),
     )
@@ -78,6 +79,7 @@ def test_fetch_product_prefers_json_ld_over_meta(monkeypatch):
 
     assert product.name == "JSON-LD Product"
     assert product.price == Decimal("1399.00")
+    assert product.currency == "MYR"
 
 
 def test_fetch_product_uses_meta_when_json_ld_is_missing(monkeypatch):

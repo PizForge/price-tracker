@@ -15,6 +15,7 @@ class PriceNotFoundError(ValueError):
 class ProductInfo:
     name: str
     price: Decimal
+    currency: str | None = None
 
 
 class _PriceParser(HTMLParser):
@@ -22,6 +23,7 @@ class _PriceParser(HTMLParser):
         super().__init__()
         self.meta_names: list[str] = []
         self.meta_prices: list[str] = []
+        self.meta_currencies: list[str] = []
         self.json_ld: list[str] = []
         self._inside_json_ld = False
         self._script_parts: list[str] = []
@@ -49,6 +51,12 @@ class _PriceParser(HTMLParser):
             ):
                 if content:
                     self.meta_prices.append(content)
+            if (
+                itemprop == "pricecurrency"
+                or property_name in {"product:price:currency", "og:price:currency"}
+                or name in {"product:price:currency", "og:price:currency"}
+            ) and content:
+                self.meta_currencies.append(content.strip())
 
         if tag.lower() == "script":
             self._inside_json_ld = "ld+json" in attributes.get("type", "").lower()
@@ -77,12 +85,12 @@ def _product_values(value: object):
             offers = value.get("offers", [])
             if isinstance(offers, dict):
                 offers = [offers]
-            prices = []
+            prices: list[tuple[object, str | None]] = []
             if isinstance(offers, list):
                 for offer in offers:
                     if isinstance(offer, dict):
                         prices.extend(
-                            offer.get(key)
+                            (offer.get(key), offer.get("priceCurrency"))
                             for key in ("price", "lowPrice", "highPrice")
                             if offer.get(key) is not None
                         )
@@ -116,7 +124,9 @@ def _to_decimal(value: object) -> Decimal | None:
     return price if price.is_finite() and price >= 0 else None
 
 
-def _fetch_product_data(url: str, timeout: float) -> tuple[str, Decimal | None]:
+def _fetch_product_data(
+    url: str, timeout: float
+) -> tuple[str, Decimal | None, str | None]:
     parsed_url = urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
         raise ValueError("URL mesti menggunakan HTTP atau HTTPS.")
@@ -130,6 +140,7 @@ def _fetch_product_data(url: str, timeout: float) -> tuple[str, Decimal | None]:
 
     name = ""
     price: Decimal | None = None
+    currency: str | None = None
     for script in parser.json_ld:
         try:
             structured_data = json.loads(script)
@@ -138,9 +149,11 @@ def _fetch_product_data(url: str, timeout: float) -> tuple[str, Decimal | None]:
         for product_name, product_prices in _product_values(structured_data):
             if isinstance(product_name, str) and product_name.strip() and not name:
                 name = product_name.strip()
-            for candidate in product_prices:
+            for candidate, candidate_currency in product_prices:
                 price = _to_decimal(candidate)
                 if price is not None:
+                    if isinstance(candidate_currency, str) and candidate_currency.strip():
+                        currency = candidate_currency.strip().upper()
                     break
             if price is not None:
                 break
@@ -153,21 +166,24 @@ def _fetch_product_data(url: str, timeout: float) -> tuple[str, Decimal | None]:
             if price is not None:
                 break
 
-    return name, price
+    if currency is None:
+        currency = next((item.upper() for item in parser.meta_currencies if item), None)
+
+    return name, price, currency
 
 
 def fetch_product(url: str, timeout: float = 10.0) -> ProductInfo:
     """Fetch a product name and price, preferring JSON-LD over meta tags."""
-    name, price = _fetch_product_data(url, timeout)
+    name, price, currency = _fetch_product_data(url, timeout)
     if name and price is not None:
-        return ProductInfo(name=name, price=price)
+        return ProductInfo(name=name, price=price, currency=currency)
 
     raise PriceNotFoundError("Nama atau harga produk tidak ditemui dalam halaman.")
 
 
 def fetch_price(url: str, timeout: float = 10.0) -> Decimal:
     """Fetch a product page and return its machine-readable price."""
-    _, price = _fetch_product_data(url, timeout)
+    _, price, _ = _fetch_product_data(url, timeout)
     if price is not None:
         return price
     raise PriceNotFoundError("Harga produk tidak ditemui dalam metadata halaman.")
